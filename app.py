@@ -1,12 +1,8 @@
 """Initialize Flask app."""
+import urls
 from datetime import timedelta
 from flask import Flask, session
-from extensions import db, migrate, cors, api, ma, login_manager, jwt
-from flask_jwt_extended.exceptions import NoAuthorizationError, WrongTokenError
-import urls
-from flask import jsonify, request
-from user.models import User
-import requests
+from extensions import db, migrate, cors, api, ma, jwt
 
 
 PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
@@ -36,7 +32,6 @@ def register_extensions(app):
     api.init_app(app)
     ma.init_app(app)
     cors.init_app(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
-    login_manager.init_app(app)
     jwt.init_app(app)
 
 

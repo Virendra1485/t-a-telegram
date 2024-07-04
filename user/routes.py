@@ -8,6 +8,7 @@ from marshmallow import ValidationError
 from .models import User, Otp
 from .schema import UserRegisterRequestSchema
 from extensions import db
+from flask_jwt_extended import create_access_token, create_refresh_token
 
 
 class UserCreateApi(Resource):
@@ -77,4 +78,5 @@ class VerifyOtpApi(Resource):
         db.session.add(latest_otp)
         db.session.commit()
 
-        return {"message": "OTP verified successfully"}, 200
+        return {"access_token": create_access_token(identity=user.username),
+                "refresh_token": create_refresh_token(identity=user.username)}, 200
