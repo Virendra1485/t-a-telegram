@@ -9,6 +9,7 @@ from .models import User, Otp
 from .schema import UserRegisterRequestSchema
 from extensions import db
 from flask_jwt_extended import create_access_token, create_refresh_token
+from tasks import send_message_to_telegram, make_otp_expired
 
 
 class UserCreateApi(Resource):
@@ -42,16 +43,9 @@ class LoginApi(Resource):
         db.session.commit()
         message = f"Your OTP is {otp}"
 
-        # self.send_message_to_telegram(user.telegram_id, message)
+        # send_message_to_telegram.delay(user.telegram_id, message)
 
         return {"message": "OTP sent to your Telegram number"}, 200
-
-    @staticmethod
-    def send_message_to_telegram(chat_id, text):
-
-        url = f"https://api.telegram.org/bot{os.environ.get('TELEGRAM_TOKEN')}/sendMessage"
-        payload = {'chat_id': chat_id, 'text': text}
-        requests.post(url, data=payload)
 
 
 class VerifyOtpApi(Resource):
@@ -68,15 +62,12 @@ class VerifyOtpApi(Resource):
         if not user:
             return {"message": "User not found"}, 404
 
-        latest_otp = Otp.query.filter_by(user_id=user.id, otp=otp).filter(
+        latest_otp = Otp.query.filter_by(user_id=user.id, otp=otp, expired=False).filter(
             Otp.created_at > datetime.now() - timedelta(minutes=15)).first()
 
         if not latest_otp:
             return {"message": "Invalid OTP !"}, 404
-
-        latest_otp.expired = True
-        db.session.add(latest_otp)
-        db.session.commit()
+        make_otp_expired.delay(latest_otp.id)
 
         return {"access_token": create_access_token(identity=user.username),
                 "refresh_token": create_refresh_token(identity=user.username)}, 200

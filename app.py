@@ -3,6 +3,7 @@ import urls
 from datetime import timedelta
 from flask import Flask, session
 from extensions import db, migrate, cors, api, ma, jwt
+from utils.utils import make_celery
 
 
 PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
@@ -11,6 +12,7 @@ PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
 def create_app(config_object="settings"):
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(config_object)
+    app.config["CELERY_CONFIG"] = {"broker_url": "redis://localhost", "result_backend": "redis://localhost"}
 
     with app.app_context():
         register_extensions(app)
@@ -21,7 +23,9 @@ def create_app(config_object="settings"):
             session.permanent = True
             app.permanent_session_lifetime = PERMANENT_SESSION_LIFETIME
 
-    return app
+    celery = make_celery(app)
+    celery.set_default()
+    return app, celery
 
 
 def register_extensions(app):
